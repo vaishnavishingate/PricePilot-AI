@@ -3,7 +3,7 @@
 **PricePilot AI** is an enterprise-grade AI-powered pricing optimization and demand forecasting platform. Built using **Python (FastAPI)**, **React / Next.js**, and state-of-the-art **Machine Learning models** (Extra Trees, XGBoost, CatBoost, LightGBM, Random Forest), the system predicts optimal product prices and forecasts demand trends using the **Brazilian E-Commerce Public Dataset (Olist)**.
 
 > **Project Submission**: Developed for the **Infosys AI Virtual Internship 7.0 (Milestones 1 & 2)**  
-> **Repository Owner**: Vaishnavi Shingte ([Vaishnavi-Shingte/Price_Pilot_AI](https://github.com/Vaishnavi-Shingte/Price_Pilot_AI))
+> **Repository Owner**: Vaishnavi Shingate ([Vaishnavi-Shingate/Price_Pilot_AI](https://github.com/Vaishnavi-Shingate/Price_Pilot_AI))
 
 ---
 
@@ -95,7 +95,7 @@ Price_Pilot_AI/
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Vaishnavi-Shingte/Price_Pilot_AI.git
+   git clone https://github.com/Vaishnavi-Shingate/Price_Pilot_AI.git
    cd Price_Pilot_AI
    ```
 
@@ -162,6 +162,6 @@ Use any of the seed accounts below to test role-based access control:
 
 ## 👩‍💻 Author & Acknowledgments
 
-- **Developer**: Vaishnavi Shingte ([@Vaishnavi-Shingte](https://github.com/Vaishnavi-Shingte))
+- **Developer**: Vaishnavi Shingate ([@Vaishnavi-Shingate](https://github.com/Vaishnavi-Shingate))
 - **Program**: Infosys Springboard AI Virtual Internship 7.0
 - **Dataset**: Olist Brazilian E-Commerce Public Dataset (Kaggle)
