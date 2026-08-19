@@ -1,0 +1,16 @@
+# Python Virtual Environments
+venv*/
+venv310/
+__pycache__/
+*.pyc
+
+# Large Data & Binary Files (>100MB for GitHub limits)
+*.csv
+price_model.pkl
+catboost_info/
+output.txt
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store

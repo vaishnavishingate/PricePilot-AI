@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PricePilot AI - Dynamic Pricing & Revenue Intelligence Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- React & Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tailwind Custom Configuration for Outfit & Plus Jakarta Sans -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Outfit', 'sans-serif'],
+                        title: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        brand: {
+                            indigo: '#6366f1',
+                            violet: '#8b5cf6',
+                            emerald: '#10b981',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        /* Glassmorphism Classes */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Gradient animations */
+        .glow-bg {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 50%, rgba(2, 6, 23, 0) 100%);
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(60px);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-slate-200">
+    <div class="glow-bg top-[-200px] left-[-200px]"></div>
+    <div class="glow-bg bottom-[-200px] right-[-200px] bg-gradient-to-tr from-brand-indigo/10 to-brand-violet/10"></div>
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // API base URL
+        const API_BASE = window.location.origin;
+
+        function App() {
+            const [token, setToken] = useState(localStorage.getItem('token') || '');
+            const [userRole, setUserRole] = useState(localStorage.getItem('role') || '');
+            const [username, setUsername] = useState(localStorage.getItem('username') || '');
+            const [activeTab, setActiveTab] = useState('dashboard');
+            
+            // Login State
+            const [loginUser, setLoginUser] = useState('admin');
+            const [loginPass, setLoginPass] = useState('admin123');
+            const [loginError, setLoginError] = useState('');
+            const [loginLoading, setLoginLoading] = useState(false);
+
+            // Dashboard State
+            const [dashboardData, setDashboardData] = useState(null);
+            const [dashboardLoading, setDashboardLoading] = useState(false);
+
+            // Catalog State
+            const [products, setProducts] = useState([]);
+            const [totalProducts, setTotalProducts] = useState(0);
+            const [catalogPage, setCatalogPage] = useState(1);
+            const [catalogLimit] = useState(8);
+            const [selectedCategory, setSelectedCategory] = useState('');
+            const [catalogSearch, setCatalogSearch] = useState('');
+            const [categories, setCategories] = useState([]);
+            const [catalogLoading, setCatalogLoading] = useState(false);
+
+            // Product Details / Forecasting State
+            const [selectedProduct, setSelectedProduct] = useState(null);
+            const [selectedProductDetails, setSelectedProductDetails] = useState(null);
+            const [detailsLoading, setDetailsLoading] = useState(false);
+            const [forecastHorizon, setForecastHorizon] = useState(30);
+            const [forecastResult, setForecastResult] = useState(null);
+            const [forecastLoading, setForecastLoading] = useState(false);
+
+            // Simulator State
+            const [simProduct, setSimProduct] = useState(null);
+            const [simPrice, setSimPrice] = useState(0);
+            const [simResult, setSimResult] = useState(null);
+            const [simLoading, setSimLoading] = useState(false);
+
+            // Reference for charts
+            const dashboardLineChartRef = useRef(null);
+            const dashboardPieChartRef = useRef(null);
+            const productSalesChartRef = useRef(null);
+            const simChartRef = useRef(null);
+
+            // Axios-like fetch configuration
+            const apiFetch = async (endpoint, options = {}) => {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+                if (response.status === 401) {
+                    handleLogout();
+                    throw new Error("Unauthorized");
+                }
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'API error');
+                }
+                return response.json();
+            };
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setLoginLoading(true);
+                setLoginError('');
+                try {
+                    const formData = new URLSearchParams();
+                    formData.append('username', loginUser);
+                    formData.append('password', loginPass);
+
+                    const res = await fetch(`${API_BASE}/api/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: formData.toString()
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.detail || 'Login failed');
+                    }
+
+                    const data = await res.json();
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('role', data.role);
+                    localStorage.setItem('username', data.username);
+                    setToken(data.access_token);
+                    setUserRole(data.role);
+                    setUsername(data.username);
+                    setActiveTab('dashboard');
+                } catch (err) {
+                    setLoginError(err.message);
+                } finally {
+                    setLoginLoading(false);
+                }
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('role');
+                localStorage.removeItem('username');
+                setToken('');
+                setUserRole('');
+                setUsername('');
+                setDashboardData(null);
+                setProducts([]);
+            };
+
+            // Load Dashboard Metrics
+            const loadDashboard = async () => {
+                if (!token) return;
+                setDashboardLoading(true);
+                try {
+                    const data = await apiFetch('/api/analytics/dashboard');
+                    setDashboardData(data);
+                } catch (err) {
+                    console.error("Dashboard error:", err);
+                } finally {
+                    setDashboardLoading(false);
+                }
+            };
+
+            // Load Categories List
+            const loadCategories = async () => {
+                if (!token) return;
+                try {
+                    const list = await apiFetch('/api/categories');
+                    setCategories(list);
+                } catch (err) {
+                    console.error("Categories error:", err);
+                }
+            };
+
+            // Load Catalog Products
+            const loadCatalog = async () => {
+                if (!token) return;
+                setCatalogLoading(true);
+                try {
+                    let url = `/api/products?page=${catalogPage}&limit=${catalogLimit}`;
+                    if (selectedCategory) url += `&category=${encodeURIComponent(selectedCategory)}`;
+                    if (catalogSearch) url += `&search=${encodeURIComponent(catalogSearch)}`;
+                    const data = await apiFetch(url);
+                    setProducts(data.products);
+                    setTotalProducts(data.total);
+                } catch (err) {
+                    console.error("Catalog load error:", err);
+                } finally {
+                    setCatalogLoading(false);
+                }
+            };
+
+            // Fetch Product Details
+            const loadProductDetails = async (productId) => {
+                setDetailsLoading(true);
+                setSelectedProduct(productId);
+                try {
+                    const details = await apiFetch(`/api/products/${productId}`);
+                    setSelectedProductDetails(details);
+                    setForecastResult(null); // Clear previous forecast
+                    // Prepopulate Simulator price
+                    setSimProduct(details);
+                    setSimPrice(details.base_price);
+                    setSimResult(null);
+                } catch (err) {
+                    console.error("Product details error:", err);
+                } finally {
+                    setDetailsLoading(false);
+                }
+            };
+
+            // Run Demand Forecast
+            const runForecast = async () => {
+                if (!selectedProductDetails) return;
+                setForecastLoading(true);
+                try {
+                    const res = await apiFetch('/api/forecast-demand', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            product_id: selectedProductDetails.id,
+                            price: selectedProductDetails.recommended_price,
+                            horizon_days: parseInt(forecastHorizon)
+                        })
+                    });
+                    setForecastResult(res);
+                } catch (err) {
+                    console.error("Forecast error:", err);
+                } finally {
+                    setForecastLoading(false);
+                }
+            };
+
+            // Run Price Simulation
+            const runSimulation = async () => {
+                if (!simProduct) return;
+                setSimLoading(true);
+                try {
+                    const res = await apiFetch('/api/revenue-simulator', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            product_id: simProduct.id,
+                            custom_price: parseFloat(simPrice)
+                        })
+                    });
+                    setSimResult(res);
+                } catch (err) {
+                    console.error("Simulation error:", err);
+                } finally {
+                    setSimLoading(false);
+                }
+            };
+
+            // Trigger loading when tab shifts or login success
+            useEffect(() => {
+                if (token) {
+                    loadCategories();
+                    if (activeTab === 'dashboard') {
+                        loadDashboard();
+                    } else if (activeTab === 'catalog') {
+                        loadCatalog();
+                    } else if (activeTab === 'simulator' && products.length === 0) {
+                        loadCatalog();
+                    }
+                }
+            }, [token, activeTab]);
+
+            // Page indexing triggers reload
+            useEffect(() => {
+                if (token && activeTab === 'catalog') {
+                    loadCatalog();
+                }
+            }, [catalogPage, selectedCategory]);
+
+            // Search debounce
+            useEffect(() => {
+                const handler = setTimeout(() => {
+                    if (token && activeTab === 'catalog') {
+                        setCatalogPage(1);
+                        loadCatalog();
+                    }
+                }, 40000000000000000000); // Trigger search manually on enter or button click for speed, or basic debounce
+                return () => clearTimeout(handler);
+            }, [catalogSearch]);
+
+            // Render Dashboard Charts
+            useEffect(() => {
+                if (activeTab === 'dashboard' && dashboardData && !dashboardLoading) {
+                    // Line chart for monthly sales
+                    const ctxLine = document.getElementById('dashboardLineChart');
+                    if (ctxLine) {
+                        if (dashboardLineChartRef.current) dashboardLineChartRef.current.destroy();
+                        
+                        dashboardLineChartRef.current = new Chart(ctxLine, {
+                            type: 'line',
+                            data: {
+                                labels: dashboardData.monthly_sales.map(m => m.month),
+                                datasets: [
+                                    {
+                                        label: 'Revenue ($)',
+                                        data: dashboardData.monthly_sales.map(m => m.revenue),
+                                        borderColor: '#6366f1',
+                                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                        tension: 0.4,
+                                        fill: true,
+                                        borderWidth: 3
+                                    },
+                                    {
+                                        label: 'Units Sold',
+                                        data: dashboardData.monthly_sales.map(m => m.units),
+                                        borderColor: '#10b981',
+                                        backgroundColor: 'transparent',
+                                        tension: 0.4,
+                                        borderWidth: 2,
+                                        yAxisID: 'y1'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans' } } }
+                                },
+                                scales: {
+                                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                                    y1: {
+                                        position: 'right',
+                                        grid: { drawOnChartArea: false },
+                                        ticks: { color: '#10b981' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Pie Chart for category breakdown
+                    const ctxPie = document.getElementById('dashboardPieChart');
+                    if (ctxPie) {
+                        if (dashboardPieChartRef.current) dashboardPieChartRef.current.destroy();
+                        
+                        dashboardPieChartRef.current = new Chart(ctxPie, {
+                            type: 'doughnut',
+                            data: {
+                                labels: dashboardData.category_distribution.map(c => c.name),
+                                datasets: [{
+                                    data: dashboardData.category_distribution.map(c => c.value),
+                                    backgroundColor: [
+                                        '#6366f1', '#8b5cf6', '#10b981', '#f59e0b',
+                                        '#ec4899', '#3b82f6', '#14b8a6', '#f43f5e'
+                                    ],
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(30, 41, 59, 0.45)'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                        labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 10 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }, [dashboardData, activeTab]);
+
+            // Render Product Sales History Chart
+            useEffect(() => {
+                if (selectedProductDetails && activeTab === 'catalog') {
+                    const ctxHist = document.getElementById('productSalesChart');
+                    if (ctxHist) {
+                        if (productSalesChartRef.current) productSalesChartRef.current.destroy();
+                        
+                        productSalesChartRef.current = new Chart(ctxHist, {
+                            type: 'bar',
+                            data: {
+                                labels: selectedProductDetails.sales_history.map(s => s.date),
+                                datasets: [
+                                    {
+                                        label: 'Units Sold',
+                                        data: selectedProductDetails.sales_history.map(s => s.units_sold),
+                                        backgroundColor: '#8b5cf6',
+                                        borderRadius: 4,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Selling Price ($)',
+                                        data: selectedProductDetails.sales_history.map(s => s.price),
+                                        type: 'line',
+                                        borderColor: '#f59e0b',
+                                        borderWidth: 2,
+                                        tension: 0.3,
+                                        fill: false,
+                                        yAxisID: 'y1'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { labels: { color: '#94a3b8' } }
+                                },
+                                scales: {
+                                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 10 } },
+                                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                                    y1: {
+                                        position: 'right',
+                                        grid: { drawOnChartArea: false },
+                                        ticks: { color: '#f59e0b' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }, [selectedProductDetails, activeTab]);
+
+            // Render simulation elastic charts
+            useEffect(() => {
+                if (simResult && activeTab === 'simulator') {
+                    const ctxSim = document.getElementById('simChart');
+                    if (ctxSim) {
+                        if (simChartRef.current) simChartRef.current.destroy();
+                        
+                        simChartRef.current = new Chart(ctxSim, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Units Demand', 'Revenue ($)', 'Profit ($)'],
+                                datasets: [
+                                    {
+                                        label: 'Baseline (Current)',
+                                        data: [simResult.base_demand, simResult.base_revenue, simResult.base_profit],
+                                        backgroundColor: '#475569'
+                                    },
+                                    {
+                                        label: 'Simulated (New)',
+                                        data: [simResult.custom_demand, simResult.custom_revenue, simResult.custom_profit],
+                                        backgroundColor: simResult.profit_change_pct >= 0 ? '#10b981' : '#f43f5e'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { labels: { color: '#94a3b8' } }
+                                },
+                                scales: {
+                                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                                }
+                            }
+                        });
+                    }
+                }
+            }, [simResult, activeTab]);
+
+            // Run forecasting auto when selected details shift
+            useEffect(() => {
+                if (selectedProductDetails) {
+                    runForecast();
+                }
+            }, [selectedProductDetails, forecastHorizon]);
+
+            // Run simulation auto when price or product changes
+            useEffect(() => {
+                if (simProduct) {
+                    runSimulation();
+                }
+            }, [simProduct, simPrice]);
+
+            if (!token) {
+                return (
+                    <div class="min-h-screen flex items-center justify-center relative p-4">
+                        <div class="glow-bg top-[10%] left-[20%]"></div>
+                        <div class="glass-card max-w-md w-full p-8 rounded-2xl shadow-2xl relative z-10">
+                            <div class="text-center mb-8">
+                                <div class="w-16 h-16 bg-gradient-to-tr from-brand-indigo to-brand-violet rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
+                                    <i class="fa-solid fa-chart-line text-2xl text-white"></i>
+                                </div>
+                                <h1 class="text-3xl font-extrabold font-title tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">PricePilot AI</h1>
+                                <p class="text-slate-400 text-sm mt-2">Dynamic Pricing & Revenue Intelligence Engine</p>
+                            </div>
+                            
+                            {loginError && (
+                                <div class="bg-brand-rose/10 border border-brand-rose/20 text-brand-rose text-sm rounded-lg p-3 mb-6 flex items-center">
+                                    <i class="fa-solid fa-circle-exclamation mr-2"></i>
+                                    {loginError}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleLogin} class="space-y-6">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Username</label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                                            <i class="fa-regular fa-user"></i>
+                                        </span>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            value={loginUser}
+                                            onChange={e => setLoginUser(e.target.value)}
+                                            class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl py-3 pl-10 pr-4 text-slate-200 focus:outline-none focus:border-brand-indigo text-sm transition-all"
+                                            placeholder="Enter username" 
+                                        />
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 mt-1 block">Default: admin / manager / analyst</span>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                                            <i class="fa-solid fa-lock"></i>
+                                        </span>
+                                        <input 
+                                            type="password" 
+                                            required
+                                            value={loginPass}
+                                            onChange={e => setLoginPass(e.target.value)}
+                                            class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl py-3 pl-10 pr-4 text-slate-200 focus:outline-none focus:border-brand-indigo text-sm transition-all"
+                                            placeholder="Enter password" 
+                                        />
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 mt-1 block">Default passwords: admin123 / manager123 / analyst123</span>
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    disabled={loginLoading}
+                                    class="w-full bg-gradient-to-r from-brand-indigo to-brand-violet hover:from-indigo-600 hover:to-violet-600 text-white rounded-xl py-3 font-semibold text-sm transition-all flex items-center justify-center shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 active:scale-[0.98]"
+                                >
+                                    {loginLoading ? (
+                                        <i class="fa-solid fa-spinner animate-spin mr-2"></i>
+                                    ) : (
+                                        <i class="fa-solid fa-right-to-bracket mr-2"></i>
+                                    )}
+                                    Authenticate
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div class="min-h-screen flex flex-col md:flex-row relative">
+                    {/* Navigation Sidebar */}
+                    <div class="w-full md:w-64 glass-panel flex flex-col z-20">
+                        <div class="p-6 flex items-center space-x-3 border-b border-slate-800">
+                            <div class="w-10 h-10 bg-gradient-to-tr from-brand-indigo to-brand-violet rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                                <i class="fa-solid fa-chart-line text-lg text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold font-title bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">PricePilot AI</h2>
+                                <span class="text-[10px] text-brand-indigo font-bold tracking-widest uppercase">Intel Platform</span>
+                            </div>
+                        </div>
+
+                        {/* Nav Links */}
+                        <div class="p-4 flex-1 space-y-1">
+                            <button 
+                                onClick={() => setActiveTab('dashboard')}
+                                class={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-brand-indigo/10 to-brand-violet/10 border-l-2 border-brand-indigo text-slate-100' : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-200'}`}
+                            >
+                                <i class="fa-solid fa-house-chimney text-base"></i>
+                                <span>Overview Console</span>
+                            </button>
+
+                            <button 
+                                onClick={() => { setActiveTab('catalog'); setSelectedProduct(null); setSelectedProductDetails(null); }}
+                                class={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'catalog' ? 'bg-gradient-to-r from-brand-indigo/10 to-brand-violet/10 border-l-2 border-brand-indigo text-slate-100' : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-200'}`}
+                            >
+                                <i class="fa-solid fa-boxes-stacked text-base"></i>
+                                <span>Product Intelligence</span>
+                            </button>
+
+                        </div>
+
+                        {/* User Profile Info */}
+                        <div class="p-4 border-t border-slate-800 bg-slate-950/40">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                                        {username.substring(0,2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-semibold text-slate-300">{username}</div>
+                                        <div class="text-[10px] text-slate-500 capitalize">{userRole} Profile</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={handleLogout}
+                                    class="text-slate-500 hover:text-brand-rose transition-colors text-sm"
+                                    title="Sign Out"
+                                >
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div class="flex-1 min-w-0 flex flex-col p-6 md:p-8 overflow-y-auto max-h-screen relative z-10">
+                        {/* Tab Contents */}
+                        {activeTab === 'dashboard' && (
+                            <div class="space-y-6">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                                    <div>
+                                        <h1 class="text-3xl font-extrabold font-title bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Overview Console</h1>
+                                        <p class="text-slate-400 text-sm mt-1">Price index analysis & sales revenue performance mapping.</p>
+                                    </div>
+                                    <button 
+                                        onClick={loadDashboard}
+                                        disabled={dashboardLoading}
+                                        class="self-start px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-300 border border-slate-700 flex items-center transition-all"
+                                    >
+                                        <i class={`fa-solid fa-rotate mr-2 ${dashboardLoading ? 'animate-spin' : ''}`}></i>
+                                        Refresh Metrics
+                                    </button>
+                                </div>
+
+                                {dashboardLoading && !dashboardData ? (
+                                    <div class="flex items-center justify-center h-96">
+                                        <i class="fa-solid fa-circle-notch animate-spin text-4xl text-brand-indigo"></i>
+                                    </div>
+                                ) : dashboardData ? (
+                                    <div class="space-y-6">
+                                        {/* KPI Row */}
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div class="glass-card p-5 rounded-2xl">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Catalog Size</span>
+                                                    <span class="text-brand-indigo bg-brand-indigo/10 px-2 py-1 rounded text-[10px] font-bold">Products</span>
+                                                </div>
+                                                <h3 class="text-2xl font-bold font-title text-slate-100">{dashboardData.kpis.total_products}</h3>
+                                                <p class="text-[10px] text-slate-500 mt-2">Active Olist catalog items</p>
+                                            </div>
+
+                                            <div class="glass-card p-5 rounded-2xl">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Sales</span>
+                                                    <span class="text-brand-violet bg-brand-violet/10 px-2 py-1 rounded text-[10px] font-bold">Units</span>
+                                                </div>
+                                                <h3 class="text-2xl font-bold font-title text-slate-100">{dashboardData.kpis.total_units_sold.toLocaleString()}</h3>
+                                                <p class="text-[10px] text-slate-500 mt-2">Units dispatched historically</p>
+                                            </div>
+
+                                            <div class="glass-card p-5 rounded-2xl">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Gross Revenue</span>
+                                                    <span class="text-brand-emerald bg-brand-emerald/10 px-2 py-1 rounded text-[10px] font-bold">USD</span>
+                                                </div>
+                                                <h3 class="text-2xl font-bold font-title text-slate-100">${dashboardData.kpis.total_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h3>
+                                                <p class="text-[10px] text-slate-500 mt-2">Aggregated Olist earnings</p>
+                                            </div>
+
+                                            <div class="glass-card p-5 rounded-2xl">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Avg Margin</span>
+                                                    <span class="text-brand-amber bg-brand-amber/10 px-2 py-1 rounded text-[10px] font-bold">Profit</span>
+                                                </div>
+                                                <h3 class="text-2xl font-bold font-title text-slate-100">{dashboardData.kpis.average_margin_pct}%</h3>
+                                                <p class="text-[10px] text-slate-500 mt-2">Baseline category pricing margin</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Charts Section */}
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            <div class="glass-card p-6 rounded-2xl lg:col-span-2">
+                                                <h3 class="text-lg font-bold font-title mb-4">Historical Revenue & Sales Trends</h3>
+                                                <div class="relative h-80">
+                                                    <canvas id="dashboardLineChart"></canvas>
+                                                </div>
+                                            </div>
+
+                                            <div class="glass-card p-6 rounded-2xl">
+                                                <h3 class="text-lg font-bold font-title mb-4">Category Distribution</h3>
+                                                <div class="relative h-80 flex items-center justify-center">
+                                                    <canvas id="dashboardPieChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div class="text-center p-12 bg-slate-900/20 rounded-2xl border border-slate-800">
+                                        <i class="fa-solid fa-database text-4xl text-slate-600 mb-4"></i>
+                                        <p class="text-slate-400">No data found. Ensure database seeder script has run.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'catalog' && (
+                            <div class="space-y-6">
+                                {!selectedProduct ? (
+                                    // List View
+                                    <div class="space-y-6">
+                                        <div>
+                                            <h1 class="text-3xl font-extrabold font-title bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Product Catalog</h1>
+                                            <p class="text-slate-400 text-sm mt-1">Select an Olist catalog item to calculate margins, predictions, and forecasts.</p>
+                                        </div>
+
+                                        {/* Filters Row */}
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                                </span>
+                                                <input 
+                                                    type="text" 
+                                                    value={catalogSearch}
+                                                    onChange={e => setCatalogSearch(e.target.value)}
+                                                    class="w-full bg-slate-900/60 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-slate-200 focus:outline-none focus:border-brand-indigo text-sm transition-all"
+                                                    placeholder="Search product ID..." 
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <select 
+                                                    value={selectedCategory}
+                                                    onChange={e => setSelectedCategory(e.target.value)}
+                                                    class="w-full bg-slate-900/60 border border-slate-800 rounded-xl py-2.5 px-4 text-slate-300 focus:outline-none focus:border-brand-indigo text-sm transition-all"
+                                                >
+                                                    <option value="">All Categories</option>
+                                                    {categories.map((c, i) => (
+                                                        <option key={i} value={c}>{c.replace(/_/g, ' ')}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Products Table */}
+                                        {catalogLoading ? (
+                                            <div class="flex items-center justify-center h-80">
+                                                <i class="fa-solid fa-circle-notch animate-spin text-4xl text-brand-indigo"></i>
+                                            </div>
+                                        ) : products.length > 0 ? (
+                                            <div class="space-y-4">
+                                                <div class="overflow-x-auto bg-slate-900/20 border border-slate-800 rounded-2xl">
+                                                    <table class="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr class="border-b border-slate-800 text-xs text-slate-400 font-bold uppercase tracking-wider bg-slate-900/40">
+                                                                <th class="py-4 px-6">Product ID</th>
+                                                                <th class="py-4 px-6">Category</th>
+                                                                <th class="py-4 px-6">Freight Cost</th>
+                                                                <th class="py-4 px-6">Current Price</th>
+                                                                <th class="py-4 px-6">Model Rec</th>
+                                                                <th class="py-4 px-6 text-right">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody class="divide-y divide-slate-800/60 text-sm">
+                                                            {products.map((p) => (
+                                                                <tr key={p.id} class="hover:bg-slate-800/10 transition-colors">
+                                                                    <td class="py-4 px-6 font-mono text-xs text-brand-indigo">{p.id.substring(0, 8)}...{p.id.substring(p.id.length-6)}</td>
+                                                                    <td class="py-4 px-6 text-slate-300 capitalize">{p.category.replace(/_/g, ' ')}</td>
+                                                                    <td class="py-4 px-6 text-slate-400">${p.freight_value.toFixed(2)}</td>
+                                                                    <td class="py-4 px-6 font-semibold text-slate-300">${p.base_price.toFixed(2)}</td>
+                                                                    <td class="py-4 px-6">
+                                                                        <span class="text-brand-emerald bg-brand-emerald/10 px-2.5 py-1 rounded text-xs font-medium">
+                                                                            ${p.recommended_price ? p.recommended_price.toFixed(2) : (p.base_price * 1.05).toFixed(2)}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="py-4 px-6 text-right">
+                                                                        <button 
+                                                                            onClick={() => loadProductDetails(p.id)}
+                                                                            class="px-3.5 py-1.5 bg-brand-indigo/15 hover:bg-brand-indigo text-slate-200 hover:text-white rounded-lg text-xs font-semibold border border-brand-indigo/30 transition-all active:scale-95"
+                                                                        >
+                                                                            Analyze
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Pagination */}
+                                                <div class="flex items-center justify-between pt-4">
+                                                    <span class="text-xs text-slate-400">
+                                                        Showing {((catalogPage - 1) * catalogLimit) + 1} to {Math.min(catalogPage * catalogLimit, totalProducts)} of {totalProducts} products
+                                                    </span>
+                                                    <div class="flex space-x-2">
+                                                        <button 
+                                                            disabled={catalogPage === 1}
+                                                            onClick={() => setCatalogPage(p => Math.max(p - 1, 1))}
+                                                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 rounded-lg text-xs text-slate-300 border border-slate-700 transition-colors"
+                                                        >
+                                                            Previous
+                                                        </button>
+                                                        <button 
+                                                            disabled={catalogPage * catalogLimit >= totalProducts}
+                                                            onClick={() => setCatalogPage(p => p + 1)}
+                                                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 rounded-lg text-xs text-slate-300 border border-slate-700 transition-colors"
+                                                        >
+                                                            Next
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div class="text-center p-12 bg-slate-900/20 rounded-2xl border border-slate-800">
+                                                <i class="fa-solid fa-triangle-exclamation text-4xl text-slate-600 mb-4"></i>
+                                                <p class="text-slate-400">No products found matching filters.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    // Detail & Forecasting View
+                                    <div class="space-y-6">
+                                        <button 
+                                            onClick={() => setSelectedProduct(null)}
+                                            class="flex items-center text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                                        >
+                                            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Catalog
+                                        </button>
+
+                                        {detailsLoading || !selectedProductDetails ? (
+                                            <div class="flex items-center justify-center h-96">
+                                                <i class="fa-solid fa-circle-notch animate-spin text-4xl text-brand-indigo"></i>
+                                            </div>
+                                        ) : (
+                                            <div class="space-y-6">
+                                                {/* Header */}
+                                                <div>
+                                                    <div class="flex items-center space-x-3">
+                                                        <span class="text-xs bg-brand-indigo/10 border border-brand-indigo/20 text-brand-indigo px-3 py-1 rounded-full font-bold uppercase tracking-wider">{selectedProductDetails.category.replace(/_/g, ' ')}</span>
+                                                        <span class="text-xs text-slate-500 font-mono">ID: {selectedProductDetails.id}</span>
+                                                    </div>
+                                                    <h1 class="text-2xl font-extrabold font-title text-slate-100 mt-2">Product Strategy Analysis</h1>
+                                                </div>
+
+                                                {/* Top Row: Details & Competitors */}
+                                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                    <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-6">
+                                                        <h3 class="text-lg font-bold font-title">Product Characteristics</h3>
+                                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                            <div class="bg-slate-950/40 p-4 rounded-xl">
+                                                                <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Weight</span>
+                                                                <div class="text-base font-semibold text-slate-200 mt-1">{selectedProductDetails.weight_g.toLocaleString()} g</div>
+                                                            </div>
+                                                            <div class="bg-slate-950/40 p-4 rounded-xl">
+                                                                <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Freight Unit</span>
+                                                                <div class="text-base font-semibold text-slate-200 mt-1">${selectedProductDetails.freight_value.toFixed(2)}</div>
+                                                            </div>
+                                                            <div class="bg-slate-950/40 p-4 rounded-xl">
+                                                                <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Baseline Price</span>
+                                                                <div class="text-base font-semibold text-slate-200 mt-1">${selectedProductDetails.base_price.toFixed(2)}</div>
+                                                            </div>
+                                                            <div class="bg-slate-950/40 p-4 rounded-xl border border-brand-emerald/20">
+                                                                <span class="text-[10px] text-brand-emerald uppercase font-bold tracking-wide">Price Recommendation</span>
+                                                                <div class="text-base font-bold text-brand-emerald mt-1">${selectedProductDetails.recommended_price.toFixed(2)}</div>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+
+                                                    {/* Demand Forecast Options */}
+                                                    <div class="glass-card p-6 rounded-2xl space-y-4">
+                                                        <h3 class="text-lg font-bold font-title">AI Demand Forecasting</h3>
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Forecasting Horizon</label>
+                                                            <select 
+                                                                value={forecastHorizon}
+                                                                onChange={e => setForecastHorizon(e.target.value)}
+                                                                class="w-full bg-slate-900/60 border border-slate-800 rounded-xl py-2.5 px-4 text-slate-300 focus:outline-none focus:border-brand-indigo text-sm transition-all"
+                                                            >
+                                                                <option value="7">Short-Term (7 Days)</option>
+                                                                <option value="14">Short-Term (14 Days)</option>
+                                                                <option value="30">Short-Term (30 Days)</option>
+                                                                <option value="90">Medium-Term (3 Months)</option>
+                                                                <option value="180">Medium-Term (6 Months)</option>
+                                                                <option value="360">Long-Term (12 Months)</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {forecastLoading ? (
+                                                            <div class="flex items-center justify-center py-8">
+                                                                <i class="fa-solid fa-spinner animate-spin text-2xl text-brand-indigo"></i>
+                                                            </div>
+                                                        ) : forecastResult ? (
+                                                            <div class="space-y-4 pt-2">
+                                                                <div class="bg-slate-950/30 p-4 rounded-xl text-center">
+                                                                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Predicted Sales Volume</span>
+                                                                    <div class="text-3xl font-extrabold text-brand-indigo mt-1">{forecastResult.predicted_units} Units</div>
+                                                                </div>
+
+                                                                <div class="flex justify-between items-center bg-slate-950/30 p-3 rounded-xl">
+                                                                    <span class="text-xs text-slate-400 font-semibold">Demand Trend</span>
+                                                                    <span class={`px-2 py-1 rounded text-xs font-bold ${forecastResult.trend === 'Increasing' ? 'text-brand-emerald bg-brand-emerald/10' : (forecastResult.trend === 'Decreasing' ? 'text-brand-rose bg-brand-rose/10' : 'text-slate-400 bg-slate-800')}`}>
+                                                                        {forecastResult.trend}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div class="flex justify-between items-center bg-slate-950/30 p-3 rounded-xl">
+                                                                    <span class="text-xs text-slate-400 font-semibold">Confidence Score</span>
+                                                                    <span class="text-xs font-bold text-slate-200">{forecastResult.confidence_score}%</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Row: Historical Chart */}
+                                                <div class="glass-card p-6 rounded-2xl">
+                                                    <h3 class="text-lg font-bold font-title mb-4">Historical sales volume & pricing trajectory</h3>
+                                                    <div class="relative h-80">
+                                                        <canvas id="productSalesChart"></canvas>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
