@@ -1,16 +1,33 @@
-# Python Virtual Environments
+# Python
 venv*/
 venv310/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.log
 
-# Large Data & Binary Files (>100MB for GitHub limits)
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Data and generated artifacts
 *.csv
-price_model.pkl
 catboost_info/
+trained_models/
+saved_models/
 output.txt
 
-# IDE & OS
+# IDE / OS
 .vscode/
 .idea/
 .DS_Store
+
+# Runtime databases
+*.db-journal
