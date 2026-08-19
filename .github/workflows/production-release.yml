@@ -1,0 +1,46 @@
+name: PricePilot AI Production Release CI/CD
+
+on:
+  push:
+    branches: [ main, master, vaishnavi-shingate, production ]
+  pull_request:
+    branches: [ main, master, vaishnavi-shingate, production ]
+
+jobs:
+  backend-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+      - name: Set up Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: PricePilot-AI_Vaishnavi_Shingate/backend/requirements.txt
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r PricePilot-AI_Vaishnavi_Shingate/backend/requirements.txt
+          pip install flake8 black
+      - name: Syntax and Style Verification
+        run: |
+          python -m compileall PricePilot-AI_Vaishnavi_Shingate/backend
+          black --check PricePilot-AI_Vaishnavi_Shingate/backend || true
+          flake8 PricePilot-AI_Vaishnavi_Shingate/backend --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  frontend-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+          cache-dependency-path: PricePilot-AI_Vaishnavi_Shingate/frontend/package.json
+      - name: Install Frontend Packages
+        working-directory: PricePilot-AI_Vaishnavi_Shingate/frontend
+        run: npm install
+      - name: Compile Production React Application
+        working-directory: PricePilot-AI_Vaishnavi_Shingate/frontend
+        run: npm run build
