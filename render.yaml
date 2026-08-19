@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pricepilot-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r PricePilot-AI_Vaishnavi_Shingate/backend/requirements.txt && cd PricePilot-AI_Vaishnavi_Shingate/frontend && npm install && npm run build
+    startCommand: cd PricePilot-AI_Vaishnavi_Shingate && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_API_KEY
+        sync: false
