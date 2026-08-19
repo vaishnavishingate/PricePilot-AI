@@ -4,11 +4,19 @@ venv310/
 __pycache__/
 *.pyc
 
-# Large Data & Binary Files (>100MB for GitHub limits)
-*.csv
-price_model.pkl
-catboost_info/
+# Archives & Temporary Files
+*.zip
+*.log
+*.dat
+*.ini
 output.txt
+catboost_info/
+PricePilot-AI_Vaishnavi_Shingate/
+pricepilot-ai/
+src/
+
+# Large Model Binaries (>100MB)
+price_model.pkl
 
 # IDE & OS
 .vscode/
