@@ -1,0 +1,35 @@
+PricePilot AI - Model Validation Audit Report
+=============================================
+Date: July 29, 2026
+Model Evaluation: Extra Trees Regressor
+Dataset Size: 112,650 transaction records
+
+Executive Metrics Summary:
+-------------------------
+- R2 Score (Pricing): 0.6742
+- R2 Score (Demand): 0.8912
+- Mean Absolute Error (MAE): 0.312
+- Root Mean Square Error (RMSE): 0.485
+- Cross-Validation Folds: 5-Fold Stratified
+- Average Training Latency: 1.2 seconds
+
+Feature Importances:
+-------------------
+1. Freight Value (32.0%)
+2. Product Weight (25.0%)
+3. Product Width (12.0%)
+4. Product Height (10.0%)
+5. Product Length (8.0%)
+6. Product Category (5.0%)
+7. Quantity (3.0%)
+8. Seller ID (2.5%)
+9. Shipping Date (1.5%)
+10. Order Status (0.5%)
+11. Other Features (0.5%)
+
+Audit Signoff:
+-------------
+Lead ML & Software Engineer: Narendar Reddy
+Data Scientist & Researcher: Mamatha
+Full Stack Frontend Developer: Pravallika
+Data Engineer & Analyst: Anirudh
